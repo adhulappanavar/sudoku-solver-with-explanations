@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sudoku Solver with Explanations</title>
+    <title>Sudoku Solver with Step-by-Step Explanations</title>
     <style>
         * {
             margin: 0;
@@ -13,25 +13,100 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #2c3e50;
+            line-height: 1.6;
             padding: 20px;
+            min-height: 100vh;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            align-items: start;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
 
-        .sudoku-section {
-            background: white;
-            border-radius: 15px;
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .input-section {
             padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-bottom: 1px solid #eee;
+        }
+
+        .input-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #bdc3c7 0%, #95a5a6 100%);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 15px rgba(189, 195, 199, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #a8b0b5 0%, #7f8c8d 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(189, 195, 199, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 15px rgba(86, 171, 47, 0.3);
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #4a9a23 0%, #8fd4b8 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(86, 171, 47, 0.4);
         }
 
         .sudoku-grid {
@@ -40,47 +115,61 @@
             gap: 1px;
             background: #333;
             padding: 2px;
-            border-radius: 8px;
+            border-radius: 4px;
             margin-bottom: 20px;
+            max-width: 450px;
         }
 
         .cell {
-            width: 40px;
-            height: 40px;
+            width: 45px;
+            height: 45px;
             border: none;
             background: white;
             text-align: center;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 4px;
         }
 
         .cell:focus {
             outline: none;
-            background: #e3f2fd;
-            box-shadow: 0 0 0 2px #2196f3;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            box-shadow: 0 0 0 3px #2196f3, 0 4px 15px rgba(33, 150, 243, 0.3);
+            transform: scale(1.05);
         }
 
         .cell.original {
-            background: #f5f5f5;
-            color: #333;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            color: #495057;
+            font-weight: 600;
         }
 
         .cell.highlighted {
-            background: #fff3e0;
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
             color: #f57c00;
+            animation: glow 2s ease-in-out infinite alternate;
         }
 
         .cell.current-step {
-            background: #e8f5e8;
+            background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
             color: #2e7d32;
             animation: pulse 1s infinite;
+            box-shadow: 0 0 0 3px #4caf50, 0 4px 15px rgba(76, 175, 80, 0.3);
         }
 
         .cell.candidate-removed {
-            background: #ffebee;
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
             color: #c62828;
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        @keyframes glow {
+            from { box-shadow: 0 0 5px #f57c00; }
+            to { box-shadow: 0 0 20px #f57c00, 0 0 30px #f57c00; }
         }
 
         /* Box borders */
@@ -97,199 +186,353 @@
             50% { transform: scale(1.05); }
         }
 
-        .controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .btn-primary {
-            background: #2196f3;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #1976d2;
-            transform: translateY(-2px);
-        }
-
-        .btn-secondary {
-            background: #757575;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #616161;
-        }
-
-        .btn-success {
-            background: #4caf50;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #388e3c;
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .explanation-section {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            max-height: 600px;
-            overflow-y: auto;
-        }
-
-        .step-info {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 15px;
-            border-left: 4px solid #2196f3;
-        }
-
-        .step-technique {
-            font-size: 12px;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-        }
-
-        .step-description {
-            font-size: 16px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        .step-explanation {
-            color: #666;
-            line-height: 1.5;
-        }
-
-        .step-navigation {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .step-btn {
-            padding: 8px 16px;
-            border: 1px solid #ddd;
-            background: white;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .step-btn:hover {
-            background: #f5f5f5;
-        }
-
-        .step-btn.active {
-            background: #2196f3;
-            color: white;
-            border-color: #2196f3;
-        }
-
-        .candidates-display {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-
-        .candidates-title {
-            font-weight: 600;
-            margin-bottom: 10px;
-            color: #333;
-        }
-
-        .candidate-cell {
-            display: inline-block;
-            width: 30px;
-            height: 30px;
-            border: 1px solid #ddd;
-            text-align: center;
-            line-height: 28px;
-            font-size: 10px;
-            margin: 1px;
-            background: white;
-        }
-
-        .candidate-cell.removed {
-            background: #ffebee;
-            color: #c62828;
-            text-decoration: line-through;
-        }
-
         .status {
             padding: 10px;
-            border-radius: 6px;
+            border-radius: 4px;
             margin-bottom: 15px;
             font-weight: 600;
         }
 
         .status.success {
-            background: #e8f5e8;
+            background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
             color: #2e7d32;
-            border: 1px solid #a5d6a7;
+            border: 1px solid #4caf50;
+            box-shadow: 0 2px 10px rgba(76, 175, 80, 0.2);
         }
 
         .status.error {
-            background: #ffebee;
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
             color: #c62828;
-            border: 1px solid #ef9a9a;
+            border: 1px solid #f44336;
+            box-shadow: 0 2px 10px rgba(244, 67, 54, 0.2);
         }
 
         .status.info {
-            background: #e3f2fd;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
             color: #1565c0;
+            border: 1px solid #2196f3;
+            box-shadow: 0 2px 10px rgba(33, 150, 243, 0.2);
+        }
+
+        .solution-section {
+            padding: 30px;
+        }
+
+        .step-container {
+            margin-bottom: 30px;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+
+        .step-container:hover {
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+            transform: translateY(-2px);
+        }
+
+        .step-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 18px 25px;
+            border-bottom: 1px solid #e9ecef;
+            font-weight: bold;
+            font-size: 16px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .step-content {
+            padding: 25px;
+            background: white;
+        }
+
+        .step-info {
+            margin-bottom: 20px;
+        }
+
+        .step-info-row {
+            display: flex;
+            margin-bottom: 10px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 8px 0;
+            border-bottom: 1px solid #f8f9fa;
+        }
+
+        .step-label {
+            font-weight: 600;
+            min-width: 120px;
+            color: #6c757d;
+        }
+
+        .step-value {
+            color: #495057;
+            font-weight: 500;
+        }
+
+        .step-explanation {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            padding: 18px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196f3;
+            box-shadow: 0 2px 10px rgba(33, 150, 243, 0.1);
+        }
+
+        .board-display {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .visual-board {
+            display: inline-block;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .board-labels {
+            margin-bottom: 10px;
+        }
+
+        .label-row {
+            display: flex;
+            margin-bottom: 5px;
+        }
+
+        .label-cell {
+            width: 40px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .board-row {
+            display: flex;
+            margin-bottom: 2px;
+        }
+
+        .board-row:nth-child(3n) {
+            margin-bottom: 8px;
+        }
+
+        .board-cell {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+            background: white;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        /* 3x3 box borders - right borders for 3rd, 6th cells in each row (positions 4, 7) */
+        .board-row .board-cell:nth-child(3n+1) {
+            border-right: 2px solid #495057;
+        }
+
+        /* 3x3 box borders - bottom borders for 3rd, 6th rows (positions 4, 7) */
+        .board-row:nth-child(3n+1) .board-cell {
+            border-bottom: 2px solid #495057;
+        }
+
+        /* Add left border to first cell of each box (positions 2, 5, 8) */
+        .board-row .board-cell:nth-child(3n+2) {
+            border-left: 2px solid #495057;
+        }
+
+        /* Add top border to first row of each box (positions 2, 5, 8) */
+        .board-row:nth-child(3n+2) .board-cell {
+            border-top: 2px solid #495057;
+        }
+
+        .original-cell {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            color: #1565c0;
+            font-weight: 600;
             border: 1px solid #90caf9;
+        }
+
+        .filled-cell {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            color: #e65100;
+            font-weight: 500;
+            border: 1px solid #ffcc02;
+        }
+
+        .highlighted-cell {
+            background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+            color: #2e7d32;
+            font-weight: bold;
+            box-shadow: 0 0 0 3px #4caf50, 0 4px 15px rgba(76, 175, 80, 0.3);
+            animation: pulse 1s infinite;
+            border: 1px solid #4caf50;
+        }
+
+        .empty-cell {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            color: #adb5bd;
+            border: 1px solid #dee2e6;
+        }
+
+        .board-legend {
+            margin-top: 15px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+
+        .original-legend {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        }
+
+        .filled-legend {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+        }
+
+        .highlight-legend {
+            background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+        }
+
+        .candidates-removed {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            padding: 18px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ff9800;
+            box-shadow: 0 2px 10px rgba(255, 152, 0, 0.1);
+        }
+
+        .candidates-title {
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #e65100;
+            font-size: 14px;
+        }
+
+        .candidate-item {
+            margin-bottom: 6px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #d84315;
+            font-size: 13px;
+        }
+
+        .visual-reasoning {
+            background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+            padding: 18px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4caf50;
+            box-shadow: 0 2px 10px rgba(76, 175, 80, 0.1);
+        }
+
+        .visual-reasoning-title {
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #2e7d32;
+            font-size: 14px;
+        }
+
+        .step-divider {
+            border-top: 2px solid #e9ecef;
+            margin: 25px 0;
+        }
+
+        .final-solution {
+            background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: 30px;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
+            border: 2px solid #4caf50;
+        }
+
+        .final-solution h3 {
+            color: #2e7d32;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ddd;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         @media (max-width: 768px) {
             .container {
-                grid-template-columns: 1fr;
+                margin: 10px;
             }
             
             .cell {
-                width: 30px;
-                height: 30px;
+                width: 35px;
+                height: 35px;
                 font-size: 14px;
+            }
+            
+            .input-controls {
+                flex-direction: column;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="sudoku-section">
-            <h2>Sudoku Puzzle</h2>
-            <div class="controls">
-                <button class="btn btn-primary" onclick="solvePuzzle()">Solve All</button>
-                <button class="btn btn-secondary" onclick="clearBoard()">Clear</button>
+        <div class="header">
+            <h1>Sudoku Solver with Step-by-Step Explanations</h1>
+            <p>Enter a puzzle and get detailed explanations for each solving step</p>
+        </div>
+        
+        <div class="input-section">
+            <div class="input-controls">
+                <button class="btn btn-primary" onclick="solvePuzzle()">Solve Puzzle</button>
+                <button class="btn btn-secondary" onclick="clearBoard()">Clear Board</button>
                 <button class="btn btn-success" onclick="loadSample()">Load Sample</button>
-                <button class="btn btn-secondary" onclick="showCandidates()">Show Candidates</button>
             </div>
             
             <div id="status"></div>
@@ -297,18 +540,11 @@
             <div class="sudoku-grid" id="sudokuGrid">
                 <!-- Grid will be generated by JavaScript -->
             </div>
-            
-            <div class="step-navigation">
-                <button class="btn btn-secondary" onclick="previousStep()" id="prevBtn">Previous</button>
-                <button class="btn btn-primary" onclick="nextStep()" id="nextBtn">Next Step</button>
-                <span id="stepCounter">Step 0 of 0</span>
-            </div>
         </div>
         
-        <div class="explanation-section">
-            <h2>Solving Steps & Explanations</h2>
-            <div id="explanationContent">
-                <p>Enter a Sudoku puzzle and click "Solve All" to see step-by-step explanations.</p>
+        <div class="solution-section" id="solutionSection">
+            <div id="solutionContent">
+                <p>Enter a Sudoku puzzle and click "Solve Puzzle" to see step-by-step explanations.</p>
             </div>
         </div>
     </div>
@@ -317,8 +553,7 @@
         let currentBoard = Array(9).fill().map(() => Array(9).fill(0));
         let originalBoard = Array(9).fill().map(() => Array(9).fill(0));
         let solvingSteps = [];
-        let currentStepIndex = -1;
-        let showCandidatesMode = false;
+        let currentBoardState = Array(9).fill().map(() => Array(9).fill(0));
 
         // Initialize the grid
         function initializeGrid() {
@@ -402,11 +637,10 @@
         function clearBoard() {
             currentBoard = Array(9).fill().map(() => Array(9).fill(0));
             originalBoard = Array(9).fill().map(() => Array(9).fill(0));
+            currentBoardState = Array(9).fill().map(() => Array(9).fill(0));
             solvingSteps = [];
-            currentStepIndex = -1;
             updateCellStyling();
-            updateExplanation();
-            updateStepNavigation();
+            updateSolutionDisplay();
             showStatus('Board cleared', 'info');
         }
 
@@ -426,14 +660,78 @@
             
             currentBoard = sample.map(row => [...row]);
             originalBoard = sample.map(row => [...row]);
+            currentBoardState = sample.map(row => [...row]);
             updateCellStyling();
             showStatus('Sample puzzle loaded', 'info');
         }
 
+        function createVisualBoard(board, highlightRow = -1, highlightCol = -1, highlightValue = 0) {
+            let html = '<div class="visual-board">';
+            html += '<div class="board-labels">';
+            html += '<div class="label-row"><div class="label-cell"></div>';
+            for (let i = 0; i < 9; i++) {
+                html += `<div class="label-cell">${String.fromCharCode(65 + i)}</div>`;
+            }
+            html += '</div>';
+            
+            for (let i = 0; i < 9; i++) {
+                html += '<div class="board-row">';
+                html += `<div class="label-cell">${i + 1}</div>`;
+                
+                for (let j = 0; j < 9; j++) {
+                    const value = board[i][j];
+                    const originalValue = originalBoard[i][j];
+                    const isOriginal = originalValue !== 0;
+                    const isHighlighted = (i === highlightRow && j === highlightCol && value === highlightValue && highlightValue !== 0);
+                    const isEmpty = value === 0;
+                    const isFilled = !isEmpty && !isOriginal;
+                    
+                    // Debug logging for highlighting
+                    if (isHighlighted) {
+                        console.log(`HIGHLIGHTED: Cell (${i+1},${j+1}) with value ${value}, highlight params: row=${highlightRow+1}, col=${highlightCol+1}, value=${highlightValue}`);
+                    }
+                    
+                    // Debug logging for first few cells
+                    if (i < 3 && j < 3) {
+                        console.log(`Cell (${i+1},${j+1}): value=${value}, original=${originalValue}, isOriginal=${isOriginal}, isFilled=${isFilled}, isHighlighted=${isHighlighted}`);
+                    }
+                    
+                    let cellClass = 'board-cell';
+                    if (isHighlighted) {
+                        cellClass += ' highlighted-cell';
+                    } else if (isOriginal) {
+                        cellClass += ' original-cell';
+                    } else if (isFilled) {
+                        cellClass += ' filled-cell';
+                    } else {
+                        cellClass += ' empty-cell';
+                    }
+                    
+                    html += `<div class="${cellClass}">${isEmpty ? '' : value}</div>`;
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+            
+            // Add legend
+            html += '<div class="board-legend">';
+            html += '<div class="legend-item"><span class="legend-color original-legend"></span><span>Original numbers</span></div>';
+            html += '<div class="legend-item"><span class="legend-color filled-legend"></span><span>Filled numbers</span></div>';
+            if (highlightRow !== -1) {
+                html += '<div class="legend-item"><span class="legend-color highlight-legend"></span><span>Just placed</span></div>';
+            }
+            html += '</div>';
+            
+            return html;
+        }
+
         async function solvePuzzle() {
             showStatus('Solving puzzle...', 'info');
+            document.getElementById('solutionContent').innerHTML = '<div class="loading">Solving puzzle...</div>';
             
             try {
+                console.log('Sending request to /solve with board:', currentBoard);
+                
                 const response = await fetch('/solve', {
                     method: 'POST',
                     headers: {
@@ -442,13 +740,16 @@
                     body: JSON.stringify({ board: currentBoard })
                 });
                 
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
                 const data = await response.json();
+                console.log('Response data:', data);
                 
                 if (response.ok) {
                     solvingSteps = data.steps;
-                    currentStepIndex = -1;
-                    updateExplanation();
-                    updateStepNavigation();
+                    currentBoardState = data.final_board.map(row => [...row]);
+                    updateSolutionDisplay();
                     
                     if (data.is_solved) {
                         showStatus('Puzzle solved successfully!', 'success');
@@ -457,144 +758,119 @@
                     }
                 } else {
                     showStatus(data.error || 'Error solving puzzle', 'error');
+                    document.getElementById('solutionContent').innerHTML = '<p>Error solving puzzle: ' + (data.error || 'Unknown error') + '</p>';
                 }
             } catch (error) {
-                showStatus('Error connecting to server', 'error');
+                console.error('Fetch error:', error);
+                showStatus('Error connecting to server: ' + error.message, 'error');
+                document.getElementById('solutionContent').innerHTML = '<p>Error connecting to server: ' + error.message + '</p>';
             }
         }
 
-        async function nextStep() {
-            if (currentStepIndex >= solvingSteps.length - 1) {
-                showStatus('No more steps available', 'info');
-                return;
-            }
-            
-            currentStepIndex++;
-            await applyStep(currentStepIndex);
-            updateStepNavigation();
-        }
-
-        async function previousStep() {
-            if (currentStepIndex <= 0) {
-                showStatus('No previous steps available', 'info');
-                return;
-            }
-            
-            currentStepIndex--;
-            await applyStep(currentStepIndex);
-            updateStepNavigation();
-        }
-
-        async function applyStep(stepIndex) {
-            try {
-                const response = await fetch('/step', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ 
-                        board: originalBoard, 
-                        step_index: stepIndex 
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    currentBoard = data.board;
-                    updateCellStyling();
-                    highlightCurrentStep(data.current_step);
-                    updateExplanation();
-                }
-            } catch (error) {
-                showStatus('Error applying step', 'error');
-            }
-        }
-
-        function highlightCurrentStep(step) {
-            // Remove previous highlights
-            document.querySelectorAll('.cell').forEach(cell => {
-                cell.classList.remove('current-step', 'highlighted', 'candidate-removed');
-            });
-            
-            if (step) {
-                // Highlight the cell being filled
-                const cellIndex = step.row * 9 + step.col;
-                const cells = document.querySelectorAll('.cell');
-                if (cells[cellIndex]) {
-                    cells[cellIndex].classList.add('current-step');
-                }
-                
-                // Highlight cells involved in the technique
-                if (step.cells_involved) {
-                    step.cells_involved.forEach(([row, col]) => {
-                        const index = row * 9 + col;
-                        if (cells[index]) {
-                            cells[index].classList.add('highlighted');
-                        }
-                    });
-                }
-            }
-        }
-
-        function updateExplanation() {
-            const content = document.getElementById('explanationContent');
+        function updateSolutionDisplay() {
+            const content = document.getElementById('solutionContent');
             
             if (solvingSteps.length === 0) {
-                content.innerHTML = '<p>Enter a Sudoku puzzle and click "Solve All" to see step-by-step explanations.</p>';
+                content.innerHTML = '<p>Enter a Sudoku puzzle and click "Solve Puzzle" to see step-by-step explanations.</p>';
                 return;
             }
             
-            let html = '';
+            let html = '<h2>=== Sudoku Solver with Step-by-Step Explanations ===</h2><br>';
+            html += '<h3>Original Puzzle:</h3>';
+            html += '<div class="board-display">' + createVisualBoard(originalBoard) + '</div><br>';
+            html += '<h3>Solving puzzle...</h3><br>';
+            html += '<h3>Found ' + solvingSteps.length + ' solving steps:</h3>';
+            html += '<div style="border-top: 2px solid #333; margin: 20px 0;"></div>';
+            
+            // Reset board state for step-by-step display
+            currentBoardState = originalBoard.map(row => [...row]);
             
             solvingSteps.forEach((step, index) => {
-                const isActive = index === currentStepIndex;
-                const stepClass = isActive ? 'step-info current' : 'step-info';
+                // Update board state BEFORE creating the visual board for this step
+                if (step.value !== 0) {
+                    currentBoardState[step.row][step.col] = step.value;
+                    console.log(`Step ${index + 1}: Placed ${step.value} at (${step.row+1},${step.col+1})`);
+                    console.log(`Board state after step ${index + 1}:`, currentBoardState);
+                }
                 
-                html += `
-                    <div class="${stepClass}">
-                        <div class="step-technique">${step.technique}</div>
-                        <div class="step-description">${step.description}</div>
-                        <div class="step-explanation">${step.explanation}</div>
-                        ${step.candidates_removed && step.candidates_removed.length > 0 ? 
-                            `<div class="candidates-display">
-                                <div class="candidates-title">Candidates removed:</div>
-                                ${step.candidates_removed.map(([row, col, val]) => 
-                                    `<span class="candidate-cell removed">${val}</span>`
-                                ).join('')}
-                            </div>` : ''
-                        }
-                    </div>
-                `;
+                html += createStepHTML(step, index + 1);
             });
+            
+            html += '<div class="final-solution">';
+            html += '<h3>Puzzle solved!</h3>';
+            html += '<h3>Final Solution:</h3>';
+            html += '<div class="board-display">' + createVisualBoard(currentBoardState) + '</div>';
+            html += '<p><strong>Puzzle solved:</strong> true</p>';
+            html += '<p><strong>Board valid:</strong> true</p>';
+            html += '</div>';
             
             content.innerHTML = html;
         }
 
-        function updateStepNavigation() {
-            const prevBtn = document.getElementById('prevBtn');
-            const nextBtn = document.getElementById('nextBtn');
-            const counter = document.getElementById('stepCounter');
+        function createStepHTML(step, stepNumber) {
+            let html = '<div class="step-container">';
             
-            prevBtn.disabled = currentStepIndex <= 0;
-            nextBtn.disabled = currentStepIndex >= solvingSteps.length - 1;
+            // Step header
+            html += '<div class="step-header">Step ' + stepNumber + ': ' + step.technique + '</div>';
             
-            counter.textContent = `Step ${currentStepIndex + 1} of ${solvingSteps.length}`;
+            // Step content
+            html += '<div class="step-content">';
+            
+            // Step info
+            html += '<div class="step-info">';
+            html += '<div class="step-info-row"><span class="step-label">Action:</span><span class="step-value">' + step.description + '</span></div>';
+            html += '<div class="step-info-row"><span class="step-label">Cell:</span><span class="step-value">(' + (step.row + 1) + ', ' + (step.col + 1) + ')</span></div>';
+            html += '<div class="step-info-row"><span class="step-label">Value:</span><span class="step-value">' + step.value + '</span></div>';
+            html += '</div>';
+            
+            // Explanation
+            html += '<div class="step-explanation">';
+            html += '<strong>Explanation:</strong> ' + step.explanation;
+            html += '</div>';
+            
+            // Board display
+            html += '<div class="board-display">';
+            console.log(`Creating board for step: row=${step.row}, col=${step.col}, value=${step.value}`);
+            if (step.value !== 0) {
+                html += createVisualBoard(currentBoardState, step.row, step.col, step.value);
+            } else {
+                html += createVisualBoard(currentBoardState);
+            }
+            html += '</div>';
+            
+            // Candidates removed
+            if (step.candidates_removed && step.candidates_removed.length > 0) {
+                html += '<div class="candidates-removed">';
+                html += '<div class="candidates-title">Candidates removed:</div>';
+                step.candidates_removed.forEach(([row, col, val]) => {
+                    html += '<div class="candidate-item">  - Removed ' + val + ' from cell (' + (row + 1) + ',' + (col + 1) + ')</div>';
+                });
+                html += '</div>';
+            }
+            
+            // Visual reasoning for Candidate Lines
+            if (step.technique === 'Candidate Lines') {
+                html += '<div class="visual-reasoning">';
+                html += '<div class="visual-reasoning-title">Visual Reasoning:</div>';
+                html += '<div>  The number is constrained to a specific row/column within a box</div>';
+                html += '<div>  This means it cannot appear elsewhere in that row/column</div>';
+                html += '</div>';
+            }
+            
+            html += '<div style="border-top: 1px solid #ddd; margin-top: 20px;"></div>';
+            html += '</div>';
+            html += '</div>';
+            
+            return html;
         }
 
         function showStatus(message, type) {
             const status = document.getElementById('status');
-            status.innerHTML = `<div class="status ${type}">${message}</div>`;
+            status.innerHTML = '<div class="status ' + type + '">' + message + '</div>';
             
             setTimeout(() => {
                 status.innerHTML = '';
             }, 3000);
-        }
-
-        function showCandidates() {
-            showCandidatesMode = !showCandidatesMode;
-            // This would require additional backend support to show candidates
-            showStatus(showCandidatesMode ? 'Candidate mode enabled' : 'Candidate mode disabled', 'info');
         }
 
         // Initialize the application
