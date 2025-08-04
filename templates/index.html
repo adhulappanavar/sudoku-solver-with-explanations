@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sudoku Solver with Explanations</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .sudoku-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .sudoku-grid {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 1px;
+            background: #333;
+            padding: 2px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .cell {
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: white;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .cell:focus {
+            outline: none;
+            background: #e3f2fd;
+            box-shadow: 0 0 0 2px #2196f3;
+        }
+
+        .cell.original {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .cell.highlighted {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .cell.current-step {
+            background: #e8f5e8;
+            color: #2e7d32;
+            animation: pulse 1s infinite;
+        }
+
+        .cell.candidate-removed {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        /* Box borders */
+        .cell:nth-child(3n) {
+            border-right: 2px solid #333;
+        }
+        .cell:nth-child(n+19):nth-child(-n+27),
+        .cell:nth-child(n+46):nth-child(-n+54) {
+            border-bottom: 2px solid #333;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: #2196f3;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1976d2;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #757575;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #616161;
+        }
+
+        .btn-success {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #388e3c;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .explanation-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .step-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .step-technique {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .step-description {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .step-explanation {
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .step-navigation {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .step-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .step-btn:hover {
+            background: #f5f5f5;
+        }
+
+        .step-btn.active {
+            background: #2196f3;
+            color: white;
+            border-color: #2196f3;
+        }
+
+        .candidates-display {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .candidates-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .candidate-cell {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 1px solid #ddd;
+            text-align: center;
+            line-height: 28px;
+            font-size: 10px;
+            margin: 1px;
+            background: white;
+        }
+
+        .candidate-cell.removed {
+            background: #ffebee;
+            color: #c62828;
+            text-decoration: line-through;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .status.success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 1px solid #a5d6a7;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ef9a9a;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1565c0;
+            border: 1px solid #90caf9;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            
+            .cell {
+                width: 30px;
+                height: 30px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sudoku-section">
+            <h2>Sudoku Puzzle</h2>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="solvePuzzle()">Solve All</button>
+                <button class="btn btn-secondary" onclick="clearBoard()">Clear</button>
+                <button class="btn btn-success" onclick="loadSample()">Load Sample</button>
+                <button class="btn btn-secondary" onclick="showCandidates()">Show Candidates</button>
+            </div>
+            
+            <div id="status"></div>
+            
+            <div class="sudoku-grid" id="sudokuGrid">
+                <!-- Grid will be generated by JavaScript -->
+            </div>
+            
+            <div class="step-navigation">
+                <button class="btn btn-secondary" onclick="previousStep()" id="prevBtn">Previous</button>
+                <button class="btn btn-primary" onclick="nextStep()" id="nextBtn">Next Step</button>
+                <span id="stepCounter">Step 0 of 0</span>
+            </div>
+        </div>
+        
+        <div class="explanation-section">
+            <h2>Solving Steps & Explanations</h2>
+            <div id="explanationContent">
+                <p>Enter a Sudoku puzzle and click "Solve All" to see step-by-step explanations.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentBoard = Array(9).fill().map(() => Array(9).fill(0));
+        let originalBoard = Array(9).fill().map(() => Array(9).fill(0));
+        let solvingSteps = [];
+        let currentStepIndex = -1;
+        let showCandidatesMode = false;
+
+        // Initialize the grid
+        function initializeGrid() {
+            const grid = document.getElementById('sudokuGrid');
+            grid.innerHTML = '';
+            
+            for (let i = 0; i < 9; i++) {
+                for (let j = 0; j < 9; j++) {
+                    const cell = document.createElement('input');
+                    cell.type = 'text';
+                    cell.className = 'cell';
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.maxLength = 1;
+                    cell.addEventListener('input', handleCellInput);
+                    cell.addEventListener('keydown', handleKeyDown);
+                    grid.appendChild(cell);
+                }
+            }
+        }
+
+        function handleCellInput(e) {
+            const cell = e.target;
+            const value = cell.value;
+            const row = parseInt(cell.dataset.row);
+            const col = parseInt(cell.dataset.col);
+            
+            // Only allow numbers 1-9
+            if (value && !/^[1-9]$/.test(value)) {
+                cell.value = '';
+                currentBoard[row][col] = 0;
+                return;
+            }
+            
+            currentBoard[row][col] = value ? parseInt(value) : 0;
+            updateCellStyling();
+        }
+
+        function handleKeyDown(e) {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || 
+                e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                e.preventDefault();
+                navigateCell(e.key);
+            }
+        }
+
+        function navigateCell(direction) {
+            const cells = document.querySelectorAll('.cell');
+            const currentCell = document.activeElement;
+            const currentIndex = Array.from(cells).indexOf(currentCell);
+            
+            let nextIndex = currentIndex;
+            switch (direction) {
+                case 'ArrowUp': nextIndex = Math.max(0, currentIndex - 9); break;
+                case 'ArrowDown': nextIndex = Math.min(80, currentIndex + 9); break;
+                case 'ArrowLeft': nextIndex = Math.max(0, currentIndex - 1); break;
+                case 'ArrowRight': nextIndex = Math.min(80, currentIndex + 1); break;
+            }
+            
+            cells[nextIndex].focus();
+        }
+
+        function updateCellStyling() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach((cell, index) => {
+                const row = Math.floor(index / 9);
+                const col = index % 9;
+                const value = currentBoard[row][col];
+                
+                cell.value = value || '';
+                cell.className = 'cell';
+                
+                if (value !== 0) {
+                    if (originalBoard[row][col] !== 0) {
+                        cell.classList.add('original');
+                    }
+                }
+            });
+        }
+
+        function clearBoard() {
+            currentBoard = Array(9).fill().map(() => Array(9).fill(0));
+            originalBoard = Array(9).fill().map(() => Array(9).fill(0));
+            solvingSteps = [];
+            currentStepIndex = -1;
+            updateCellStyling();
+            updateExplanation();
+            updateStepNavigation();
+            showStatus('Board cleared', 'info');
+        }
+
+        function loadSample() {
+            // Sample Sudoku puzzle
+            const sample = [
+                [5,3,0,0,7,0,0,0,0],
+                [6,0,0,1,9,5,0,0,0],
+                [0,9,8,0,0,0,0,6,0],
+                [8,0,0,0,6,0,0,0,3],
+                [4,0,0,8,0,3,0,0,1],
+                [7,0,0,0,2,0,0,0,6],
+                [0,6,0,0,0,0,2,8,0],
+                [0,0,0,4,1,9,0,0,5],
+                [0,0,0,0,8,0,0,7,9]
+            ];
+            
+            currentBoard = sample.map(row => [...row]);
+            originalBoard = sample.map(row => [...row]);
+            updateCellStyling();
+            showStatus('Sample puzzle loaded', 'info');
+        }
+
+        async function solvePuzzle() {
+            showStatus('Solving puzzle...', 'info');
+            
+            try {
+                const response = await fetch('/solve', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ board: currentBoard })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    solvingSteps = data.steps;
+                    currentStepIndex = -1;
+                    updateExplanation();
+                    updateStepNavigation();
+                    
+                    if (data.is_solved) {
+                        showStatus('Puzzle solved successfully!', 'success');
+                    } else {
+                        showStatus('Puzzle partially solved. Advanced techniques may be needed.', 'info');
+                    }
+                } else {
+                    showStatus(data.error || 'Error solving puzzle', 'error');
+                }
+            } catch (error) {
+                showStatus('Error connecting to server', 'error');
+            }
+        }
+
+        async function nextStep() {
+            if (currentStepIndex >= solvingSteps.length - 1) {
+                showStatus('No more steps available', 'info');
+                return;
+            }
+            
+            currentStepIndex++;
+            await applyStep(currentStepIndex);
+            updateStepNavigation();
+        }
+
+        async function previousStep() {
+            if (currentStepIndex <= 0) {
+                showStatus('No previous steps available', 'info');
+                return;
+            }
+            
+            currentStepIndex--;
+            await applyStep(currentStepIndex);
+            updateStepNavigation();
+        }
+
+        async function applyStep(stepIndex) {
+            try {
+                const response = await fetch('/step', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        board: originalBoard, 
+                        step_index: stepIndex 
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentBoard = data.board;
+                    updateCellStyling();
+                    highlightCurrentStep(data.current_step);
+                    updateExplanation();
+                }
+            } catch (error) {
+                showStatus('Error applying step', 'error');
+            }
+        }
+
+        function highlightCurrentStep(step) {
+            // Remove previous highlights
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.classList.remove('current-step', 'highlighted', 'candidate-removed');
+            });
+            
+            if (step) {
+                // Highlight the cell being filled
+                const cellIndex = step.row * 9 + step.col;
+                const cells = document.querySelectorAll('.cell');
+                if (cells[cellIndex]) {
+                    cells[cellIndex].classList.add('current-step');
+                }
+                
+                // Highlight cells involved in the technique
+                if (step.cells_involved) {
+                    step.cells_involved.forEach(([row, col]) => {
+                        const index = row * 9 + col;
+                        if (cells[index]) {
+                            cells[index].classList.add('highlighted');
+                        }
+                    });
+                }
+            }
+        }
+
+        function updateExplanation() {
+            const content = document.getElementById('explanationContent');
+            
+            if (solvingSteps.length === 0) {
+                content.innerHTML = '<p>Enter a Sudoku puzzle and click "Solve All" to see step-by-step explanations.</p>';
+                return;
+            }
+            
+            let html = '';
+            
+            solvingSteps.forEach((step, index) => {
+                const isActive = index === currentStepIndex;
+                const stepClass = isActive ? 'step-info current' : 'step-info';
+                
+                html += `
+                    <div class="${stepClass}">
+                        <div class="step-technique">${step.technique}</div>
+                        <div class="step-description">${step.description}</div>
+                        <div class="step-explanation">${step.explanation}</div>
+                        ${step.candidates_removed && step.candidates_removed.length > 0 ? 
+                            `<div class="candidates-display">
+                                <div class="candidates-title">Candidates removed:</div>
+                                ${step.candidates_removed.map(([row, col, val]) => 
+                                    `<span class="candidate-cell removed">${val}</span>`
+                                ).join('')}
+                            </div>` : ''
+                        }
+                    </div>
+                `;
+            });
+            
+            content.innerHTML = html;
+        }
+
+        function updateStepNavigation() {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const counter = document.getElementById('stepCounter');
+            
+            prevBtn.disabled = currentStepIndex <= 0;
+            nextBtn.disabled = currentStepIndex >= solvingSteps.length - 1;
+            
+            counter.textContent = `Step ${currentStepIndex + 1} of ${solvingSteps.length}`;
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.innerHTML = `<div class="status ${type}">${message}</div>`;
+            
+            setTimeout(() => {
+                status.innerHTML = '';
+            }, 3000);
+        }
+
+        function showCandidates() {
+            showCandidatesMode = !showCandidatesMode;
+            // This would require additional backend support to show candidates
+            showStatus(showCandidatesMode ? 'Candidate mode enabled' : 'Candidate mode disabled', 'info');
+        }
+
+        // Initialize the application
+        initializeGrid();
+        loadSample();
+    </script>
+</body>
+</html> 
