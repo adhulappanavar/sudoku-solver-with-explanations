@@ -45,13 +45,11 @@
 1. Go to [vercel.com](https://vercel.com) and sign up
 2. Click "New Project"
 3. Import your GitHub repository
-4. Configure:
-   - **Framework Preset**: Other
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Output Directory**: `.`
-   - **Install Command**: `pip install -r requirements.txt`
-5. Deploy
+4. **Important**: Vercel will auto-detect the Python app with `vercel.json`
+5. Deploy (no manual configuration needed)
 6. Your app will be live at: `https://your-app-name.vercel.app`
+
+**Note**: The `vercel.json` file tells Vercel this is a Python Flask app.
 
 ## 🎯 Recommended: Render
 
@@ -74,6 +72,11 @@ If needed, add these in your hosting platform:
 1. **Build fails**: Check `requirements.txt` has all dependencies
 2. **App crashes**: Check logs in hosting platform dashboard
 3. **CORS errors**: Already handled with `flask-cors`
+
+**Vercel Specific:**
+- **"No framework detected"**: Fixed with `vercel.json` file
+- **Python not detected**: Ensure `app.py` exists and `vercel.json` is present
+- **Import errors**: Check all dependencies are in `requirements.txt`
 
 ## 🌐 Custom Domain
 
