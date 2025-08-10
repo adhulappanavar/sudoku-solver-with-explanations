@@ -730,6 +730,17 @@
                 <p>Enter a Sudoku puzzle and click "Solve Puzzle" to see step-by-step explanations.</p>
             </div>
         </div>
+        
+        <!-- Version and Deployment Info Footer -->
+        <div style="text-align: center; padding: 20px; background: #f8f9fa; border-top: 1px solid #dee2e6; color: #6c757d; font-size: 12px;">
+            <div style="margin-bottom: 5px;">
+                <strong>Version:</strong> 1.2.0 | 
+                <strong>Last Deployed:</strong> <span id="deploymentTimestamp">Loading...</span>
+            </div>
+            <div style="font-size: 11px; opacity: 0.8;">
+                Sudoku Solver with Step-by-Step Explanations
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1311,6 +1322,18 @@
         initializeGrid();
         loadSample();
         refreshSavedPuzzles(); // Load saved puzzles on startup
+        
+        // Update deployment timestamp
+        function updateDeploymentTimestamp() {
+            const timestamp = new Date();
+            const timestampElement = document.getElementById('deploymentTimestamp');
+            if (timestampElement) {
+                timestampElement.textContent = timestamp.toLocaleString();
+            }
+        }
+        
+        // Update timestamp on page load
+        updateDeploymentTimestamp();
     </script>
 </body>
 </html> 
