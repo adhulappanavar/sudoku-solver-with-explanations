@@ -733,6 +733,7 @@
         
         <!-- Version and Deployment Info Footer -->
         <!-- Updated: 2025-08-10 - Fixed solver logic for complete solutions -->
+        <!-- Cache bust: v1.2.1 - Force browser reload of JavaScript -->
         <div style="text-align: center; padding: 20px; background: #f8f9fa; border-top: 1px solid #dee2e6; color: #6c757d; font-size: 12px;">
             <div style="margin-bottom: 5px;">
                 <strong>Version:</strong> 1.2.0 | 
@@ -1193,8 +1194,16 @@
                 console.log('Response data:', data);
                 
                 if (response.ok) {
+                    console.log('✅ API response received successfully');
+                    console.log('Steps received:', data.steps ? data.steps.length : 'undefined');
+                    console.log('Full response data:', data);
+                    
                     solvingSteps = data.steps;
                     currentBoardState = data.final_board.map(row => [...row]);
+                    
+                    console.log('Solving steps assigned:', solvingSteps.length);
+                    console.log('About to call updateSolutionDisplay()');
+                    
                     updateSolutionDisplay();
                     
                     if (data.is_solved) {
@@ -1214,9 +1223,14 @@
         }
 
         function updateSolutionDisplay() {
+            console.log('🔍 updateSolutionDisplay() called');
+            console.log('solvingSteps.length:', solvingSteps.length);
+            console.log('solvingSteps array:', solvingSteps);
+            
             const content = document.getElementById('solutionContent');
             
             if (solvingSteps.length === 0) {
+                console.log('⚠️ No solving steps found');
                 content.innerHTML = '<p>Enter a Sudoku puzzle and click "Solve Puzzle" to see step-by-step explanations.</p>';
                 return;
             }
