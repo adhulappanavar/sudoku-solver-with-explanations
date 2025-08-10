@@ -12,6 +12,16 @@ CORS(app)  # Enable CORS for all routes
 def index():
     return render_template('index.html')
 
+@app.route('/version')
+def version():
+    """Return version information for debugging"""
+    return jsonify({
+        'version': '1.2.1',
+        'solver_updated': True,
+        'cache_busting': True,
+        'timestamp': '2025-08-10T19:00:00Z'
+    })
+
 @app.route('/solve', methods=['POST'])
 def solve():
     try:
@@ -48,11 +58,19 @@ def solve():
             }
             serialized_steps.append(step_dict)
         
-        return jsonify({
+        response = jsonify({
             'steps': serialized_steps,
             'final_board': solver.board,
             'is_solved': solver._is_solved()
         })
+        
+        # Add cache-busting headers to prevent CDN caching
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        response.headers['X-Solver-Version'] = '1.2.1'  # Version identifier
+        
+        return response
     except Exception as e:
         print(f"Error in solve endpoint: {str(e)}")
         print(traceback.format_exc())
