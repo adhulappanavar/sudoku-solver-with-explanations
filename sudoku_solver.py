@@ -78,39 +78,96 @@ class SudokuSolver:
         """Remove a candidate value from all peer cells"""
         # Remove from same row
         for c in range(9):
-            if c != col and value in self.candidates[row][c]:
+            if c != col and self.board[row][c] == 0 and value in self.candidates[row][c]:
                 self.candidates[row][c].remove(value)
         
         # Remove from same column
         for r in range(9):
-            if r != row and value in self.candidates[r][col]:
+            if r != row and self.board[r][col] == 0 and value in self.candidates[r][col]:
                 self.candidates[r][col].remove(value)
         
         # Remove from same 3x3 box
         box_row, box_col = 3 * (row // 3), 3 * (col // 3)
         for r in range(box_row, box_row + 3):
             for c in range(box_col, box_col + 3):
-                if (r != row or c != col) and value in self.candidates[r][c]:
+                if (r != row or c != col) and self.board[r][c] == 0 and value in self.candidates[r][c]:
                     self.candidates[r][c].remove(value)
+    
+    def _validate_candidates(self) -> bool:
+        """Check if all empty cells have at least one candidate"""
+        for i in range(9):
+            for j in range(9):
+                if self.board[i][j] == 0 and len(self.candidates[i][j]) == 0:
+                    return False
+        return True
     
     def solve_step_by_step(self) -> List[SolvingStep]:
         """Solve the puzzle step by step, returning explanations"""
         self.solving_steps = []
+        max_iterations = 200  # Prevent infinite loops
+        iteration = 0
         
-        while not self._is_solved():
-            step = self._find_next_step()
-            if step is None:
-                # No more steps found - puzzle might be unsolvable or need advanced techniques
-                break
+        while not self._is_solved() and iteration < max_iterations:
+            iteration += 1
             
-            # Apply the step
-            self.board[step.row][step.col] = step.value
-            self._remove_candidate_from_peers(step.row, step.col, step.value)
+            # Always try simple techniques first after each step
+            step = self._find_single_candidate()
+            if step:
+                self._apply_step(step)
+                continue
             
-            # Add step to history
-            self.solving_steps.append(step)
+            step = self._find_single_position()
+            if step:
+                self._apply_step(step)
+                continue
+            
+            # Try advanced techniques only if they don't break the puzzle
+            step = self._find_candidate_lines_safe()
+            if step:
+                self._apply_step(step)
+                continue
+            
+            step = self._find_double_pairs_safe()
+            if step:
+                self._apply_step(step)
+                continue
+            
+            # If no step found, try to find any remaining single candidates
+            # This catches cases where advanced techniques created new single candidates
+            step = self._find_any_single_candidate()
+            if step:
+                self._apply_step(step)
+                continue
+            
+            # No more steps found
+            break
+        
+        if iteration >= max_iterations:
+            print(f"Warning: Solver stopped after {max_iterations} iterations")
         
         return self.solving_steps
+    
+    def _apply_step(self, step: SolvingStep):
+        """Apply a solving step and update the board state"""
+        if step.value != 0:  # Only place numbers, don't apply candidate removal steps
+            self.board[step.row][step.col] = step.value
+            self._remove_candidate_from_peers(step.row, step.col, step.value)
+        self.solving_steps.append(step)
+    
+    def _find_any_single_candidate(self) -> Optional[SolvingStep]:
+        """Find any cell with only one candidate, even if it was missed before"""
+        for i in range(9):
+            for j in range(9):
+                if self.board[i][j] == 0 and len(self.candidates[i][j]) == 1:
+                    value = self.candidates[i][j][0]
+                    explanation = f"Cell ({i+1},{j+1}) has only one possible candidate: {value}"
+                    return SolvingStep(
+                        technique=SolvingTechnique.SINGLE_CANDIDATE,
+                        description=f"Place {value} in cell ({i+1},{j+1})",
+                        row=i, col=j, value=value,
+                        explanation=explanation
+                    )
+        return None
     
     def _is_solved(self) -> bool:
         """Check if the puzzle is solved"""
@@ -119,28 +176,6 @@ class SudokuSolver:
                 if self.board[i][j] == 0:
                     return False
         return True
-    
-    def _find_next_step(self) -> Optional[SolvingStep]:
-        """Find the next solving step using various techniques"""
-        # Try techniques in order of complexity
-        step = self._find_single_candidate()
-        if step:
-            return step
-        
-        step = self._find_single_position()
-        if step:
-            return step
-        
-        step = self._find_candidate_lines()
-        if step:
-            return step
-        
-        step = self._find_double_pairs()
-        if step:
-            return step
-        
-        # Add more advanced techniques here
-        return None
     
     def _find_single_candidate(self) -> Optional[SolvingStep]:
         """Find cells with only one candidate (naked single)"""
@@ -214,8 +249,8 @@ class SudokuSolver:
                         )
         return None
     
-    def _find_candidate_lines(self) -> Optional[SolvingStep]:
-        """Find candidate lines (pointing pairs/triples)"""
+    def _find_candidate_lines_safe(self) -> Optional[SolvingStep]:
+        """Find candidate lines (pointing pairs/triples) with safety checks"""
         # Check each box for candidate lines
         for box_row in range(0, 9, 3):
             for box_col in range(0, 9, 3):
@@ -236,13 +271,22 @@ class SudokuSolver:
                             # All positions in same row - can remove value from rest of row
                             row = list(rows)[0]
                             removed = []
+                            temp_candidates = copy.deepcopy(self.candidates)
+                            
+                            # Try the removal first
                             for j in range(9):
                                 if j < box_col or j >= box_col + 3:  # Outside the box
-                                    if self.board[row][j] == 0 and value in self.candidates[row][j]:
-                                        self.candidates[row][j].remove(value)
+                                    if self.board[row][j] == 0 and value in temp_candidates[row][j]:
+                                        temp_candidates[row][j].remove(value)
                                         removed.append((row, j, value))
                             
-                            if removed:
+                            # Check if this would make any cell have no candidates
+                            if removed and self._validate_candidates_after_removal(temp_candidates, removed):
+                                # Apply the removal
+                                for row_idx, col_idx, val in removed:
+                                    if val in self.candidates[row_idx][col_idx]:
+                                        self.candidates[row_idx][col_idx].remove(val)
+                                
                                 box_num = (box_row // 3) * 3 + (box_col // 3) + 1
                                 cell1 = f"({row+1},{box_col+1})"
                                 cell2 = f"({row+1},{box_col+2})"
@@ -259,13 +303,22 @@ class SudokuSolver:
                             # All positions in same column - can remove value from rest of column
                             col = list(cols)[0]
                             removed = []
+                            temp_candidates = copy.deepcopy(self.candidates)
+                            
+                            # Try the removal first
                             for i in range(9):
                                 if i < box_row or i >= box_row + 3:  # Outside the box
-                                    if self.board[i][col] == 0 and value in self.candidates[i][col]:
-                                        self.candidates[i][col].remove(value)
+                                    if self.board[i][col] == 0 and value in temp_candidates[i][col]:
+                                        temp_candidates[i][col].remove(value)
                                         removed.append((i, col, value))
                             
-                            if removed:
+                            # Check if this would make any cell have no candidates
+                            if removed and self._validate_candidates_after_removal(temp_candidates, removed):
+                                # Apply the removal
+                                for row_idx, col_idx, val in removed:
+                                    if val in self.candidates[row_idx][col_idx]:
+                                        self.candidates[row_idx][col_idx].remove(val)
+                                
                                 box_num = (box_row // 3) * 3 + (box_col // 3) + 1
                                 cell1 = f"({box_row+1},{col+1})"
                                 cell2 = f"({box_row+2},{col+1})"
@@ -279,9 +332,9 @@ class SudokuSolver:
                                 )
         return None
     
-    def _find_double_pairs(self) -> Optional[SolvingStep]:
-        """Find naked pairs (two cells with same two candidates)"""
-        # Check each row, column, and box for naked pairs
+    def _find_double_pairs_safe(self) -> Optional[SolvingStep]:
+        """Find naked pairs (two cells with same two candidates) with safety checks"""
+        # Check each row for naked pairs
         for i in range(9):
             for j in range(9):
                 if self.board[i][j] == 0 and len(self.candidates[i][j]) == 2:
@@ -292,14 +345,23 @@ class SudokuSolver:
                         if k != j and self.board[i][k] == 0 and tuple(sorted(self.candidates[i][k])) == pair:
                             # Found a naked pair in row
                             removed = []
+                            temp_candidates = copy.deepcopy(self.candidates)
+                            
+                            # Try the removal first
                             for l in range(9):
                                 if l != j and l != k and self.board[i][l] == 0:
                                     for value in pair:
-                                        if value in self.candidates[i][l]:
-                                            self.candidates[i][l].remove(value)
+                                        if value in temp_candidates[i][l]:
+                                            temp_candidates[i][l].remove(value)
                                             removed.append((i, l, value))
                             
-                            if removed:
+                            # Check if this would make any cell have no candidates
+                            if removed and self._validate_candidates_after_removal(temp_candidates, removed):
+                                # Apply the removal
+                                for row_idx, col_idx, val in removed:
+                                    if val in self.candidates[row_idx][col_idx]:
+                                        self.candidates[row_idx][col_idx].remove(val)
+                                
                                 explanation = f"Naked pair {pair} in row {i+1} - these numbers can't appear elsewhere in the row"
                                 return SolvingStep(
                                     technique=SolvingTechnique.DOUBLE_PAIRS,
@@ -310,8 +372,53 @@ class SudokuSolver:
                                     cells_involved=[(i, j), (i, k)]
                                 )
         
-        # Similar logic for columns and boxes...
+        # Check columns for naked pairs
+        for j in range(9):
+            for i in range(9):
+                if self.board[i][j] == 0 and len(self.candidates[i][j]) == 2:
+                    pair = tuple(sorted(self.candidates[i][j]))
+                    
+                    # Check column for another cell with same pair
+                    for k in range(9):
+                        if k != i and self.board[k][j] == 0 and tuple(sorted(self.candidates[k][j])) == pair:
+                            # Found a naked pair in column
+                            removed = []
+                            temp_candidates = copy.deepcopy(self.candidates)
+                            
+                            # Try the removal first
+                            for l in range(9):
+                                if l != i and l != k and self.board[l][j] == 0:
+                                    for value in pair:
+                                        if value in temp_candidates[l][j]:
+                                            temp_candidates[l][j].remove(value)
+                                            removed.append((l, j, value))
+                            
+                            # Check if this would make any cell have no candidates
+                            if removed and self._validate_candidates_after_removal(temp_candidates, removed):
+                                # Apply the removal
+                                for row_idx, col_idx, val in removed:
+                                    if val in self.candidates[row_idx][col_idx]:
+                                        self.candidates[row_idx][col_idx].remove(val)
+                                
+                                explanation = f"Naked pair {pair} in column {j+1} - these numbers can't appear elsewhere in the column"
+                                return SolvingStep(
+                                    technique=SolvingTechnique.DOUBLE_PAIRS,
+                                    description=f"Remove {pair} from other cells in column {j+1}",
+                                    row=i, col=j, value=0,
+                                    explanation=explanation,
+                                    candidates_removed=removed,
+                                    cells_involved=[(i, j), (k, j)]
+                                )
+        
         return None
+    
+    def _validate_candidates_after_removal(self, temp_candidates: List[List[List[int]]], removed: List[Tuple[int, int, int]]) -> bool:
+        """Check if removing candidates would leave any cell with no candidates"""
+        for i in range(9):
+            for j in range(9):
+                if self.board[i][j] == 0 and len(temp_candidates[i][j]) == 0:
+                    return False
+        return True
     
     def get_board_state(self) -> Dict[str, Any]:
         """Get current board state for display"""
