@@ -125,11 +125,19 @@ class SudokuSolver:
             step = self._find_candidate_lines_safe()
             if step:
                 self._apply_step(step)
+                # After candidate removal, immediately check for new single candidates
+                step = self._find_any_single_candidate()
+                if step:
+                    self._apply_step(step)
                 continue
             
             step = self._find_double_pairs_safe()
             if step:
                 self._apply_step(step)
+                # After candidate removal, immediately check for new single candidates
+                step = self._find_any_single_candidate()
+                if step:
+                    self._apply_step(step)
                 continue
             
             # If no step found, try to find any remaining single candidates
@@ -149,9 +157,12 @@ class SudokuSolver:
     
     def _apply_step(self, step: SolvingStep):
         """Apply a solving step and update the board state"""
-        if step.value != 0:  # Only place numbers, don't apply candidate removal steps
+        if step.value != 0:  # Place numbers
             self.board[step.row][step.col] = step.value
             self._remove_candidate_from_peers(step.row, step.col, step.value)
+        # For candidate removal steps (step.value == 0), candidates are already removed
+        # in the _find_candidate_lines_safe and _find_double_pairs_safe methods
+        
         self.solving_steps.append(step)
     
     def _find_any_single_candidate(self) -> Optional[SolvingStep]:
