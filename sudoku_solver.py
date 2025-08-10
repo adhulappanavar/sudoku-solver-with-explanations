@@ -121,6 +121,12 @@ class SudokuSolver:
                 self._apply_step(step)
                 continue
             
+            # Try hidden singles (more advanced than single position)
+            step = self._find_hidden_single()
+            if step:
+                self._apply_step(step)
+                continue
+            
             # Try advanced techniques only if they don't break the puzzle
             step = self._find_candidate_lines_safe()
             if step:
@@ -132,6 +138,16 @@ class SudokuSolver:
                 continue
             
             step = self._find_double_pairs_safe()
+            if step:
+                self._apply_step(step)
+                # After candidate removal, immediately check for new single candidates
+                step = self._find_any_single_candidate()
+                if step:
+                    self._apply_step(step)
+                continue
+            
+            # Try X-Wing technique for harder puzzles
+            step = self._find_x_wing()
             if step:
                 self._apply_step(step)
                 # After candidate removal, immediately check for new single candidates
@@ -258,6 +274,70 @@ class SudokuSolver:
                             row=i, col=j, value=value,
                             explanation=explanation
                         )
+        return None
+    
+    def _find_hidden_single(self) -> Optional[SolvingStep]:
+        """Find hidden singles - numbers that can only go in one position in a row/col/box"""
+        # Check rows for hidden singles
+        for i in range(9):
+            for value in range(1, 10):
+                positions = []
+                for j in range(9):
+                    if self.board[i][j] == 0 and value in self.candidates[i][j]:
+                        positions.append(j)
+                
+                if len(positions) == 1:
+                    # Found a hidden single
+                    col = positions[0]
+                    explanation = f"Number {value} can only be placed in row {i+1} at position ({i+1},{col+1}) - it's the only cell in that row that can contain {value}"
+                    return SolvingStep(
+                        technique=SolvingTechnique.SINGLE_POSITION,
+                        description=f"Place {value} in cell ({i+1},{col+1}) - hidden single in row",
+                        row=i, col=col, value=value,
+                        explanation=explanation
+                    )
+        
+        # Check columns for hidden singles
+        for j in range(9):
+            for value in range(1, 10):
+                positions = []
+                for i in range(9):
+                    if self.board[i][j] == 0 and value in self.candidates[i][j]:
+                        positions.append(i)
+                
+                if len(positions) == 1:
+                    # Found a hidden single
+                    row = positions[0]
+                    explanation = f"Number {value} can only be placed in column {j+1} at position ({row+1},{j+1}) - it's the only cell in that column that can contain {value}"
+                    return SolvingStep(
+                        technique=SolvingTechnique.SINGLE_POSITION,
+                        description=f"Place {value} in cell ({row+1},{j+1}) - hidden single in column",
+                        row=row, col=j, value=value,
+                        explanation=explanation
+                    )
+        
+        # Check 3x3 boxes for hidden singles
+        for box_row in range(0, 9, 3):
+            for box_col in range(0, 9, 3):
+                for value in range(1, 10):
+                    positions = []
+                    for i in range(box_row, box_row + 3):
+                        for j in range(box_col, box_col + 3):
+                            if self.board[i][j] == 0 and value in self.candidates[i][j]:
+                                positions.append((i, j))
+                    
+                    if len(positions) == 1:
+                        # Found a hidden single
+                        row, col = positions[0]
+                        box_num = (box_row // 3) * 3 + (box_col // 3) + 1
+                        explanation = f"Number {value} can only be placed in box {box_num} at position ({row+1},{col+1}) - it's the only cell in that box that can contain {value}"
+                        return SolvingStep(
+                            technique=SolvingTechnique.SINGLE_POSITION,
+                            description=f"Place {value} in cell ({row+1},{col+1}) - hidden single in box {box_num}",
+                            row=row, col=col, value=value,
+                            explanation=explanation
+                        )
+        
         return None
     
     def _find_candidate_lines_safe(self) -> Optional[SolvingStep]:
@@ -420,6 +500,100 @@ class SudokuSolver:
                                     candidates_removed=removed,
                                     cells_involved=[(i, j), (k, j)]
                                 )
+        
+        return None
+    
+    def _find_x_wing(self) -> Optional[SolvingStep]:
+        """Find X-Wing patterns - when a number appears in exactly two positions in two rows/columns"""
+        # Check for X-Wing in rows
+        for value in range(1, 10):
+            row_positions = {}
+            for i in range(9):
+                positions = []
+                for j in range(9):
+                    if self.board[i][j] == 0 and value in self.candidates[i][j]:
+                        positions.append(j)
+                if len(positions) == 2:
+                    row_positions[i] = positions
+            
+            # Look for two rows with the same two column positions
+            for row1 in row_positions:
+                for row2 in row_positions:
+                    if row1 < row2 and row_positions[row1] == row_positions[row2]:
+                        # Found X-Wing pattern
+                        cols = row_positions[row1]
+                        removed = []
+                        temp_candidates = copy.deepcopy(self.candidates)
+                        
+                        # Try removing the value from other cells in those columns
+                        for col in cols:
+                            for i in range(9):
+                                if i != row1 and i != row2 and self.board[i][col] == 0:
+                                    if value in temp_candidates[i][col]:
+                                        temp_candidates[i][col].remove(value)
+                                        removed.append((i, col, value))
+                        
+                        # Check if removal is safe
+                        if removed and self._validate_candidates_after_removal(temp_candidates, removed):
+                            # Apply the removal
+                            for row_idx, col_idx, val in removed:
+                                if val in self.candidates[row_idx][col_idx]:
+                                    self.candidates[row_idx][col_idx].remove(val)
+                            
+                            explanation = f"X-Wing pattern found for number {value} in rows {row1+1} and {row2+1} at columns {[c+1 for c in cols]} - {value} can be removed from other cells in those columns"
+                            return SolvingStep(
+                                technique=SolvingTechnique.X_WING,
+                                description=f"X-Wing: Remove {value} from columns {[c+1 for c in cols]} outside rows {row1+1},{row2+1}",
+                                row=row1, col=cols[0], value=0,
+                                explanation=explanation,
+                                candidates_removed=removed,
+                                cells_involved=[(row1, cols[0]), (row1, cols[1]), (row2, cols[0]), (row2, cols[1])]
+                            )
+        
+        # Check for X-Wing in columns
+        for value in range(1, 10):
+            col_positions = {}
+            for j in range(9):
+                positions = []
+                for i in range(9):
+                    if self.board[i][j] == 0 and value in self.candidates[i][j]:
+                        positions.append(i)
+                if len(positions) == 2:
+                    col_positions[j] = positions
+            
+            # Look for two columns with the same two row positions
+            for col1 in col_positions:
+                for col2 in col_positions:
+                    if col1 < col2 and col_positions[col1] == col_positions[col2]:
+                        # Found X-Wing pattern
+                        rows = col_positions[col1]
+                        removed = []
+                        temp_candidates = copy.deepcopy(self.candidates)
+                        
+                        # Try removing the value from other cells in those rows
+                        for row in rows:
+                            for j in range(9):
+                                if j != col1 and j != col2 and self.board[row][j] == 0:
+                                    if value in temp_candidates[row][j]:
+                                        temp_candidates[row][j].remove(value)
+                                        removed.append((row, j, value))
+                        
+                        # Check if removal is safe
+                        if removed and self._validate_candidates_after_removal(temp_candidates, removed):
+                            # Apply the removal
+                            for row_idx, col_idx, val in removed:
+                                if val in self.candidates[row_idx][col_idx]:
+                                    self.candidates[row_idx][col_idx].remove(val)
+                            
+                            explanation = f"X-Wing pattern found for number {value} in columns {col1+1} and {col2+1} at rows {[r+1 for r in rows]} - {value} can be removed from other cells in those rows"
+                            return SolvingStep(
+                                technique=SolvingTechnique.X_WING,
+                                description=f"X-Wing: Remove {value} from rows {[r+1 for r in rows]} outside columns {col1+1},{col2+1}",
+                                row=rows[0], col=col1, value=0,
+                                explanation=explanation,
+                                candidates_removed=removed,
+                                cells_involved=[(rows[0], col1), (rows[0], col2), (rows[1], col1), (rows[1], col2)]
+                            )
         
         return None
     

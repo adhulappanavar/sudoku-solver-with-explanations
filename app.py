@@ -16,10 +16,11 @@ def index():
 def version():
     """Return version information for debugging"""
     return jsonify({
-        'version': '1.2.1',
+        'version': '1.3.0',
         'solver_updated': True,
         'cache_busting': True,
-        'timestamp': '2025-08-10T19:00:00Z'
+        'new_techniques': ['Hidden Singles', 'X-Wing'],
+        'timestamp': '2025-08-10T20:00:00Z'
     })
 
 @app.route('/solve', methods=['POST'])
@@ -68,7 +69,7 @@ def solve():
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
-        response.headers['X-Solver-Version'] = '1.2.1'  # Version identifier
+        response.headers['X-Solver-Version'] = '1.3.0'  # Version identifier
         
         return response
     except Exception as e:
