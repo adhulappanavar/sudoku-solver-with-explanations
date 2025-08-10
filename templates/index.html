@@ -107,6 +107,100 @@
             line-height: 1.4;
         }
 
+        .saved-puzzles-section {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border-radius: 8px;
+            border: 1px solid #2196f3;
+        }
+
+        .saved-puzzles-section h3 {
+            margin-bottom: 15px;
+            color: #1565c0;
+            font-size: 16px;
+        }
+
+        .saved-puzzles-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .puzzle-name-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 8px 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .puzzle-name-input:focus {
+            outline: none;
+            border-color: #2196f3;
+        }
+
+        .saved-puzzles-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+        }
+
+        .saved-puzzle-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+        }
+
+        .saved-puzzle-item:hover {
+            background: #e9ecef;
+        }
+
+        .saved-puzzle-info {
+            flex: 1;
+        }
+
+        .saved-puzzle-name {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 2px;
+        }
+
+        .saved-puzzle-date {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .saved-puzzle-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+
+        .no-saved-puzzles {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 20px;
+        }
+
         .btn {
             padding: 10px 20px;
             border: none;
@@ -603,6 +697,27 @@
                 </div>
             </div>
             
+            <div class="saved-puzzles-section">
+                <h3>💾 Save & Load Puzzles</h3>
+                <div class="saved-puzzles-controls">
+                    <input 
+                        type="text" 
+                        id="puzzleNameInput" 
+                        class="puzzle-name-input" 
+                        placeholder="Enter puzzle name (optional)"
+                    >
+                    <button class="btn btn-primary" onclick="saveCurrentPuzzle()">Save Current Puzzle</button>
+                    <button class="btn btn-secondary" onclick="refreshSavedPuzzles()">Refresh List</button>
+                </div>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button class="btn btn-success" onclick="exportSavedPuzzles()">Export All Puzzles</button>
+                    <button class="btn btn-secondary" onclick="importSavedPuzzles()">Import Puzzles</button>
+                </div>
+                <div class="saved-puzzles-list" id="savedPuzzlesList">
+                    <div class="no-saved-puzzles">No saved puzzles yet. Save your first puzzle to get started!</div>
+                </div>
+            </div>
+            
             <div id="status"></div>
             
             <div class="sudoku-grid" id="sudokuGrid">
@@ -778,6 +893,210 @@
         function clearCustomInput() {
             document.getElementById('customPuzzleInput').value = '';
             showStatus('Custom input cleared', 'info');
+        }
+
+        // Save/Load puzzle functions
+        function saveCurrentPuzzle() {
+            // Check if current board has any numbers
+            let hasNumbers = false;
+            for (let i = 0; i < 9; i++) {
+                for (let j = 0; j < 9; j++) {
+                    if (currentBoard[i][j] !== 0) {
+                        hasNumbers = true;
+                        break;
+                    }
+                }
+                if (hasNumbers) break;
+            }
+            
+            if (!hasNumbers) {
+                showStatus('No puzzle to save. Please enter a puzzle first.', 'error');
+                return;
+            }
+            
+            const customName = document.getElementById('puzzleNameInput').value.trim();
+            const timestamp = new Date();
+            const dateStr = timestamp.toISOString().slice(0, 19).replace(/:/g, '-');
+            
+            let puzzleName = customName;
+            if (!puzzleName) {
+                puzzleName = `sudoku_${dateStr}`;
+            } else {
+                puzzleName = `${puzzleName}_${dateStr}`;
+            }
+            
+            const puzzleData = {
+                name: puzzleName,
+                board: currentBoard.map(row => [...row]),
+                originalBoard: originalBoard.map(row => [...row]),
+                timestamp: timestamp.toISOString(),
+                dateDisplay: timestamp.toLocaleString()
+            };
+            
+            // Get existing saved puzzles
+            const savedPuzzles = JSON.parse(localStorage.getItem('savedSudokuPuzzles') || '[]');
+            
+            // Check if name already exists
+            const existingIndex = savedPuzzles.findIndex(p => p.name === puzzleName);
+            if (existingIndex !== -1) {
+                savedPuzzles[existingIndex] = puzzleData;
+            } else {
+                savedPuzzles.push(puzzleData);
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('savedSudokuPuzzles', JSON.stringify(savedPuzzles));
+            
+            // Clear name input
+            document.getElementById('puzzleNameInput').value = '';
+            
+            // Refresh the list
+            refreshSavedPuzzles();
+            
+            showStatus(`Puzzle saved as "${puzzleName}"`, 'success');
+        }
+
+        function refreshSavedPuzzles() {
+            const savedPuzzles = JSON.parse(localStorage.getItem('savedSudokuPuzzles') || '[]');
+            const listContainer = document.getElementById('savedPuzzlesList');
+            
+            if (savedPuzzles.length === 0) {
+                listContainer.innerHTML = '<div class="no-saved-puzzles">No saved puzzles yet. Save your first puzzle to get started!</div>';
+                return;
+            }
+            
+            // Sort by timestamp (newest first)
+            savedPuzzles.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            let html = '';
+            savedPuzzles.forEach((puzzle, index) => {
+                html += `
+                    <div class="saved-puzzle-item">
+                        <div class="saved-puzzle-info">
+                            <div class="saved-puzzle-name">${puzzle.name}</div>
+                            <div class="saved-puzzle-date">${puzzle.dateDisplay}</div>
+                        </div>
+                        <div class="saved-puzzle-actions">
+                            <button class="btn btn-primary btn-small" onclick="loadSavedPuzzle(${index})">Load</button>
+                            <button class="btn btn-secondary btn-small" onclick="deleteSavedPuzzle(${index})">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            listContainer.innerHTML = html;
+        }
+
+        function loadSavedPuzzle(index) {
+            const savedPuzzles = JSON.parse(localStorage.getItem('savedSudokuPuzzles') || '[]');
+            
+            if (index < 0 || index >= savedPuzzles.length) {
+                showStatus('Invalid puzzle index', 'error');
+                return;
+            }
+            
+            const puzzle = savedPuzzles[index];
+            
+            currentBoard = puzzle.board.map(row => [...row]);
+            originalBoard = puzzle.originalBoard.map(row => [...row]);
+            currentBoardState = puzzle.board.map(row => [...row]);
+            
+            updateCellStyling();
+            showStatus(`Loaded puzzle: ${puzzle.name}`, 'success');
+        }
+
+        function deleteSavedPuzzle(index) {
+            const savedPuzzles = JSON.parse(localStorage.getItem('savedSudokuPuzzles') || '[]');
+            
+            if (index < 0 || index >= savedPuzzles.length) {
+                showStatus('Invalid puzzle index', 'error');
+                return;
+            }
+            
+            const puzzle = savedPuzzles[index];
+            
+            if (confirm(`Are you sure you want to delete "${puzzle.name}"?`)) {
+                savedPuzzles.splice(index, 1);
+                localStorage.setItem('savedSudokuPuzzles', JSON.stringify(savedPuzzles));
+                refreshSavedPuzzles();
+                showStatus(`Deleted puzzle: ${puzzle.name}`, 'info');
+            }
+        }
+
+        function exportSavedPuzzles() {
+            const savedPuzzles = JSON.parse(localStorage.getItem('savedSudokuPuzzles') || '[]');
+            
+            if (savedPuzzles.length === 0) {
+                showStatus('No puzzles to export', 'error');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(savedPuzzles, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `sudoku_puzzles_${new Date().toISOString().slice(0, 10)}.json`;
+            link.click();
+            
+            showStatus('Puzzles exported successfully', 'success');
+        }
+
+        function importSavedPuzzles() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const importedPuzzles = JSON.parse(e.target.result);
+                        
+                        if (!Array.isArray(importedPuzzles)) {
+                            showStatus('Invalid file format', 'error');
+                            return;
+                        }
+                        
+                        // Validate each puzzle
+                        for (let puzzle of importedPuzzles) {
+                            if (!puzzle.name || !puzzle.board || !Array.isArray(puzzle.board) || puzzle.board.length !== 9) {
+                                showStatus('Invalid puzzle data in file', 'error');
+                                return;
+                            }
+                        }
+                        
+                        // Get existing puzzles
+                        const existingPuzzles = JSON.parse(localStorage.getItem('savedSudokuPuzzles') || '[]');
+                        
+                        // Merge puzzles (avoid duplicates by name)
+                        const mergedPuzzles = [...existingPuzzles];
+                        
+                        for (let importedPuzzle of importedPuzzles) {
+                            const existingIndex = mergedPuzzles.findIndex(p => p.name === importedPuzzle.name);
+                            if (existingIndex !== -1) {
+                                mergedPuzzles[existingIndex] = importedPuzzle;
+                            } else {
+                                mergedPuzzles.push(importedPuzzle);
+                            }
+                        }
+                        
+                        localStorage.setItem('savedSudokuPuzzles', JSON.stringify(mergedPuzzles));
+                        refreshSavedPuzzles();
+                        showStatus(`Imported ${importedPuzzles.length} puzzles successfully`, 'success');
+                        
+                    } catch (error) {
+                        showStatus('Error reading file: ' + error.message, 'error');
+                    }
+                };
+                
+                reader.readAsText(file);
+            };
+            
+            input.click();
         }
 
         function createVisualBoard(board, highlightRow = -1, highlightCol = -1, highlightValue = 0) {
@@ -991,6 +1310,7 @@
         // Initialize the application
         initializeGrid();
         loadSample();
+        refreshSavedPuzzles(); // Load saved puzzles on startup
     </script>
 </body>
 </html> 
